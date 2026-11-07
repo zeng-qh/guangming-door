@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b7a4b">
+<title>开门记录 · 查询</title>
+<style>
+  :root{
+    --brand:#0b7a4b; --brand-d:#096039; --brand-l:#13a163;
+    --bg1:#eef6f1; --bg2:#dceee3;
+    --ok:#0b7a4b; --err:#c8352b; --warn:#8a6a1f;
+    --text:#15241d; --sub:#6d8176; --line:rgba(11,122,75,.12);
+    --card:rgba(255,255,255,.82);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{min-height:100%}
+  body{
+    margin:0;color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);
+    background-attachment:fixed;
+    padding:calc(18px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:980px;margin:0 auto}
+  .hd{margin-bottom:16px}
+  .back{display:inline-block;font-size:12.5px;color:var(--brand);text-decoration:none;font-weight:650;margin-bottom:10px}
+  .back:active{opacity:.6}
+  h1{font-size:22px;margin:0 0 5px;font-weight:700;letter-spacing:1px}
+  .stat{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;line-height:1.6}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 4px 18px rgba(16,50,38,.05);
+  }
+  .filters{padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px 12px;align-items:end}
+  .filters label{display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--sub);font-weight:600}
+  input,select,button{font:inherit}
+  .filters input,.filters select{
+    width:100%;padding:8px 9px;font-size:13px;color:var(--text);
+    border:1px solid var(--line);border-radius:9px;background:#fff;outline:none;min-height:36px;
+  }
+  .filters input:focus,.filters select:focus{border-color:var(--brand-l);box-shadow:0 0 0 2px rgba(19,161,99,.12)}
+  .btns{display:flex;gap:8px;align-items:end}
+  .quickbar{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding-top:11px;border-top:1px solid var(--line)}
+  .quickbar .q-label{font-size:11.5px;color:var(--sub);font-weight:600;margin-right:2px}
+  .quickbar button{padding:5px 11px;font-size:11.5px;min-height:28px;border-radius:20px}
+  .quickbar button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .quickbar .q-tip{margin-left:auto;font-size:11px;color:var(--sub)}
+  button{
+    padding:8px 14px;font-size:13px;font-weight:650;border-radius:9px;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--text);min-height:36px;
+  }
+  button:active{transform:translateY(1px)}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button:disabled{opacity:.4;cursor:default;transform:none}
+
+  .resultbar{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;
+    padding:11px 14px;font-size:12.5px;color:var(--sub);
+    border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;
+  }
+  .resultbar b{color:var(--brand);font-weight:700}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;min-width:720px;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid rgba(11,122,75,.08)}
+  th{font-size:11.5px;color:var(--sub);font-weight:700;background:rgba(11,122,75,.04);white-space:nowrap;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:rgba(11,122,75,.03)}
+  .t-time{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--sub);font-size:11.5px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+  .badge.ok{background:#e8f6ee;color:var(--ok)}
+  .badge.err{background:#fcedeb;color:var(--err)}
+  .badge.warn{background:#fbf5e6;color:var(--warn)}
+  .door{font-weight:600;white-space:nowrap}
+  .door-id{font-size:10.5px;color:var(--sub);font-variant-numeric:tabular-nums;margin-top:2px}
+  .msg{word-break:break-all;line-height:1.5;max-width:280px}
+  .ms{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--sub)}
+  .empty{text-align:center;color:var(--sub);padding:38px 12px;font-size:13px}
+
+  .pager{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px;
+    padding:13px 14px;border-top:1px solid var(--line);
+  }
+  .pager button{padding:7px 11px;font-size:12px;min-height:32px}
+  .pinfo{font-size:12px;color:var(--sub);padding:0 6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .jump{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--sub);margin-left:4px}
+  .jump input{width:58px;padding:6px 7px;font-size:12px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);outline:none}
+  .foot{margin-top:14px;font-size:11px;color:var(--sub);line-height:1.8;text-align:center}
+  .err-box{padding:22px;text-align:center;color:var(--err);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <a class="back" id="back" href="#">← 返回开门</a>
+    <h1>开门记录</h1>
+    <div class="stat" id="stat">加载中…</div>
+  </div>
+
+  <form class="card filters" id="filters">
+    <label>开始日期<input type="date" id="from"></label>
+    <label>结束日期<input type="date" id="to"></label>
+    <label>结果
+      <select id="result">
+        <option value="all">全部</option>
+        <option value="success">成功</option>
+        <option value="fail">失败</option>
+      </select>
+    </label>
+    <label>关键词<input type="search" id="keyword" placeholder="消息 / 门点 / 门 ID"></label>
+    <label>每页条数
+      <select id="pageSize">
+        <option value="20" selected>20 条</option>
+        <option value="50">50 条</option>
+        <option value="100">100 条</option>
+      </select>
+    </label>
+    <div class="btns">
+      <button type="submit" class="primary">查询</button>
+      <button type="button" id="reset">重置</button>
+    </div>
+    <div class="quickbar">
+      <span class="q-label">快捷范围</span>
+      <button type="button" data-range="7" class="on">最近 7 天</button>
+      <button type="button" data-range="30">最近 30 天</button>
+      <button type="button" data-range="all">全部时间</button>
+      <span class="q-tip" id="qTip">默认：最近 7 天</span>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="resultbar" id="resultbar">正在加载…</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>时间</th><th>结果</th><th>门点</th><th>消息 / 说明</th><th>自动重登</th><th>耗时</th></tr>
+        </thead>
+        <tbody id="tbody"><tr><td class="empty" colspan="6">加载中…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button type="button" data-act="first">« 首页</button>
+      <button type="button" data-act="prev">‹ 上一页</button>
+      <span class="pinfo" id="pinfo">第 1 / 1 页</span>
+      <button type="button" data-act="next">下一页 ›</button>
+      <button type="button" data-act="last">末页 »</button>
+      <span class="jump">跳至 <input type="number" id="jump" min="1" value="1"> 页 <button type="button" id="jumpBtn">前往</button></span>
+    </div>
+  </div>
+
+  <div class="foot">
+    默认查询最近 7 天（含今天），点「全部时间」可查看全部历史记录<br>
+    记录保存在服务后台，进程重启不丢 · 明细最多保留最近 500 条，累计次数单独统计<br>
+    本页不含任何账号、密码、token 等凭据信息
+  </div>
+</div>
+
+<script>
+// 访问凭据（sharecode）随链接带来，所有请求原样带上
+function api(path){
+  var s = location.search || '';
+  if(!s) return path;
+  return path + (path.indexOf('?') >= 0 ? '&' : '?') + s.slice(1);
+}
+function $(id){ return document.getElementById(id); }
+function val(id){ return $(id).value; }
+function el(tag, cls, txt){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(txt != null) e.textContent = txt;
+  return e;
+}
+
+$('back').href = 'index.html' + (location.search || '');
+
+// —— 日期范围：默认最近 7 天（含今天，即今天往前 6 天 ~ 今天）——
+// 下面两个为纯函数，不依赖 DOM，便于单独校验日期计算。
+function fmtDate(d){
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + day;
+}
+function daysAgo(n){
+  var d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - n);
+  return d;
+}
+function markRange(days){
+  var bs = document.querySelectorAll('.quickbar button[data-range]');
+  var key = (days == null ? 'all' : String(days));
+  for(var i = 0; i < bs.length; i++){
+    var on = days !== -1 && key === bs[i].getAttribute('data-range');
+    bs[i].className = on ? 'on' : '';
+  }
+  $('qTip').textContent = days === -1 ? '自定义范围'
+    : days == null ? '当前：全部时间'
+    : days === 7 ? '默认：最近 7 天'
+    : '当前：最近 ' + days + ' 天';
+}
+function applyRange(days){
+  if(days == null){
+    $('from').value = ''; $('to').value = '';   // 不传日期 = 全部时间
+  }else{
+    $('from').value = fmtDate(daysAgo(days - 1));
+    $('to').value = fmtDate(new Date());
+  }
+  markRange(days);
+}
+
+var state = { page: 1, pageCount: 1 };
+
+function queryString(){
+  var p = new URLSearchParams();
+  var f = val('from'), t = val('to'), r = val('result'), k = val('keyword').trim();
+  if(f) p.set('from', f);
+  if(t) p.set('to', t);
+  if(r && r !== 'all') p.set('result', r);
+  if(k) p.set('keyword', k);
+  p.set('pageSize', val('pageSize') || '20');
+  p.set('page', state.page);
+  return p.toString();
+}
+
+function load(){
+  $('resultbar').textContent = '正在查询…';
+  $('tbody').innerHTML = '';
+  var row = document.createElement('tr');
+  var td = el('td', 'empty', '正在查询…'); td.colSpan = 6; row.appendChild(td);
+  $('tbody').appendChild(row);
+
+  return fetch(api('/api/door/history/query?' + queryString()))
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+    .then(render)
+    .catch(function(e){
+      $('resultbar').textContent = '查询失败';
+      $('tbody').innerHTML = '';
+      var r2 = document.createElement('tr');
+      var t2 = el('td', 'err-box', '加载失败：' + e.message + '，请检查网络或稍后重试'); t2.colSpan = 6;
+      r2.appendChild(t2); $('tbody').appendChild(r2);
+    });
+}
+
+function render(d){
+  state.page = d.page;
+  state.pageCount = d.pageCount;
+
+  $('stat').textContent = '累计 ' + (d.totalEver || 0) + ' 次 · 成功 ' + (d.successEver || 0)
+    + ' · 失败 ' + (d.failEver || 0) + ' · 可查询最近 ' + (d.retained || 0) + ' 条明细';
+  $('resultbar').innerHTML = '';
+  var left = document.createElement('span');
+  left.appendChild(document.createTextNode('命中 '));
+  var b = el('b', '', String(d.totalMatched || 0)); left.appendChild(b);
+  left.appendChild(document.createTextNode(' 条（成功 ' + (d.matchedSuccess || 0)
+    + ' · 失败 ' + (d.matchedFail || 0) + '）'));
+  $('resultbar').appendChild(left);
+  var rangeTxt = (val('from') || val('to'))
+    ? '范围 ' + (val('from') || '…') + ' ~ ' + (val('to') || '…')
+    : '全部时间';
+  $('resultbar').appendChild(el('span', '', rangeTxt + ' · 第 ' + d.page + ' / ' + d.pageCount + ' 页 · 每页 ' + d.pageSize + ' 条'));
+
+  var tbody = $('tbody');
+  tbody.innerHTML = '';
+  var items = d.items || [];
+  if(!items.length){
+    var tr0 = document.createElement('tr');
+    var td0 = el('td', 'empty', '没有符合条件的记录，试试调整查询条件'); td0.colSpan = 6;
+    tr0.appendChild(td0); tbody.appendChild(tr0);
+  }else{
+    items.forEach(function(it){
+      var tr = document.createElement('tr');
+
+      var tdTime = el('td', 't-time', it.time || ''); tr.appendChild(tdTime);
+
+      var tdRes = document.createElement('td');
+      tdRes.appendChild(el('span', 'badge ' + (it.ok ? 'ok' : 'err'), it.ok ? '成功' : '失败'));
+      tr.appendChild(tdRes);
+
+      var tdDoor = document.createElement('td');
+      tdDoor.appendChild(el('div', 'door', it.doorName || '—'));
+      if(it.doorId) tdDoor.appendChild(el('div', 'door-id', 'ID ' + it.doorId));
+      tr.appendChild(tdDoor);
+
+      var tdMsg = el('td', 'msg', it.message || '—');
+      if(it.hint) tdMsg.title = (it.message || '') + '\n' + it.hint;
+      tr.appendChild(tdMsg);
+
+      var tdRe = document.createElement('td');
+      if(it.relogged) tdRe.appendChild(el('span', 'badge warn', '是 · ' + (it.reloginAttempts || 1) + ' 次'));
+      else tdRe.appendChild(el('span', 'ms', '—'));
+      tr.appendChild(tdRe);
+
+      tr.appendChild(el('td', 'ms', (it.elapsedMs != null ? it.elapsedMs + ' ms' : '—')));
+      tbody.appendChild(tr);
+    });
+  }
+
+  $('pinfo').textContent = '第 ' + d.page + ' / ' + d.pageCount + ' 页';
+  $('jump').value = d.page;
+  $('jump').max = d.pageCount;
+  var acts = document.querySelectorAll('.pager button[data-act]');
+  for(var i = 0; i < acts.length; i++){
+    var a = acts[i].getAttribute('data-act');
+    acts[i].disabled = (a === 'first' || a === 'prev') ? d.page <= 1 : d.page >= d.pageCount;
+  }
+}
+
+function go(page){
+  state.page = Math.max(1, Math.min(page || 1, state.pageCount));
+  load();
+}
+
+$('filters').addEventListener('submit', function(e){ e.preventDefault(); state.page = 1; load(); });
+$('reset').addEventListener('click', function(){
+  $('result').value = 'all';
+  $('keyword').value = ''; $('pageSize').value = '20';
+  applyRange(7);          // 重置回到默认：最近 7 天
+  state.page = 1; load();
+});
+// 快捷范围按钮
+var rangeBtns = document.querySelectorAll('.quickbar button[data-range]');
+for(var j = 0; j < rangeBtns.length; j++){
+  rangeBtns[j].addEventListener('click', function(){
+    var v = this.getAttribute('data-range');
+    applyRange(v === 'all' ? null : parseInt(v, 10));
+    state.page = 1; load();
+  });
+}
+// 手动修改日期 → 取消快捷高亮，标记为自定义范围
+['from', 'to'].forEach(function(id){
+  $(id).addEventListener('change', function(){ markRange(-1); });
+});
+var acts = document.querySelectorAll('.pager button[data-act]');
+for(var i = 0; i < acts.length; i++){
+  acts[i].addEventListener('click', function(){
+    var a = this.getAttribute('data-act');
+    if(a === 'first') go(1);
+    else if(a === 'prev') go(state.page - 1);
+    else if(a === 'next') go(state.page + 1);
+    else if(a === 'last') go(state.pageCount);
+  });
+}
+$('jumpBtn').addEventListener('click', function(){ go(parseInt($('jump').value, 10)); });
+$('jump').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); go(parseInt(this.value, 10)); } });
+$('keyword').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); state.page = 1; load(); } });
+
+applyRange(7);   // 页面打开即默认「最近 7 天」
+load();
+</script>
+</body>
+</html>

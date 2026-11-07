@@ -1,0 +1,14 @@
+# 构建上下文精简：只带源码进镜像
+bin/
+obj/
+data/
+tools/
+*.md
+run.ps1
+Dockerfile
+.dockerignore
+docker-compose.yml
+.github/
+.git/
+*.log
+appsettings.Local.json

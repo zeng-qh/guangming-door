@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b7a4b">
+<title>一键开门</title>
+<style>
+  :root{
+    --brand:#0b7a4b; --brand-d:#096039; --brand-l:#13a163;
+    --bg1:#eef6f1; --bg2:#dceee3;
+    --ok:#0b7a4b; --err:#c8352b; --wait:#8a6a1f;
+    --text:#15241d; --sub:#6d8176;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{min-height:100%}
+  body{
+    margin:0;color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);
+    background-attachment:fixed;
+    display:flex;align-items:flex-start;justify-content:center;
+    padding:calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .wrap{width:100%;max-width:420px;text-align:center;margin:auto 0}
+  .top{font-size:13px;color:var(--brand);font-weight:650;letter-spacing:2px;margin-bottom:6px}
+  h1{font-size:26px;margin:0 0 6px;font-weight:700;letter-spacing:1px}
+  .sub{font-size:13px;color:var(--sub);margin:0 0 34px}
+  .ring{
+    position:relative;width:210px;height:210px;margin:0 auto 30px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ring::before{
+    content:"";position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle,rgba(11,122,75,.10) 0%,rgba(11,122,75,0) 70%);
+    transform:scale(1.25);
+  }
+  .pulse{
+    position:absolute;inset:6px;border-radius:50%;border:2px solid rgba(11,122,75,.20);
+    animation:pulse 2.6s ease-out infinite;pointer-events:none;
+  }
+  @keyframes pulse{0%{transform:scale(.92);opacity:.85}100%{transform:scale(1.22);opacity:0}}
+  #openBtn{
+    position:relative;width:178px;height:178px;border:0;border-radius:50%;cursor:pointer;
+    color:#fff;background:linear-gradient(155deg,var(--brand-l),var(--brand) 55%,var(--brand-d));
+    box-shadow:0 16px 34px rgba(11,122,75,.30),inset 0 2px 0 rgba(255,255,255,.22);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    transition:transform .14s ease,box-shadow .14s ease,filter .14s ease;
+    -webkit-user-select:none;user-select:none;
+  }
+  #openBtn:active{transform:scale(.955);box-shadow:0 8px 20px rgba(11,122,75,.28)}
+  #openBtn:disabled{cursor:default;filter:saturate(.6);}
+  #openBtn svg{width:52px;height:52px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  #openBtn .label{font-size:25px;font-weight:700;letter-spacing:6px;text-indent:6px}
+  .status{
+    min-height:64px;border-radius:16px;padding:15px 16px;font-size:14.5px;line-height:1.65;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    background:rgba(255,255,255,.68);border:1px solid rgba(11,122,75,.10);
+    color:var(--sub);word-break:break-all;white-space:pre-wrap;
+    box-shadow:0 4px 18px rgba(16,50,38,.05);
+  }
+  .status .ico{font-size:19px;line-height:1;flex:0 0 auto}
+  .status.ok{background:#e8f6ee;color:var(--ok);border-color:#bfe4cf}
+  .status.err{background:#fcedeb;color:var(--err);border-color:#f3ccc8}
+  .status.wait{background:#fbf5e6;color:var(--wait);border-color:#f0e0b6}
+  .status.ok .ico,.status.err .ico{font-size:20px}
+  .foot{margin-top:26px;font-size:11.5px;color:var(--sub);line-height:2}
+  .foot .lnk{color:var(--brand);text-decoration:none;font-weight:650}
+  .foot .lnk:active{opacity:.6}
+  .foot .sep{color:var(--sub);padding:0 8px}
+  .door{margin-top:14px;font-size:12px;color:var(--brand);font-weight:600;min-height:18px}
+  .spinning{animation:spin 1s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* 开门记录 */
+  .log{
+    margin-top:24px;text-align:left;
+    background:rgba(255,255,255,.72);border:1px solid rgba(11,122,75,.10);
+    border-radius:16px;padding:14px 14px 8px;
+    box-shadow:0 4px 18px rgba(16,50,38,.05);
+  }
+  .log-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .log-title{font-size:13px;font-weight:700;color:var(--brand)}
+  .log-head-r{display:flex;align-items:baseline;gap:10px}
+  .log-stat{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .log-more{font-size:11.5px;color:var(--brand);font-weight:650;text-decoration:none;white-space:nowrap}
+  .log-more:active{opacity:.6}
+  .log-note{font-size:10.5px;color:var(--sub);text-align:center;padding:9px 0 3px;border-top:1px solid rgba(11,122,75,.08);margin-top:2px}
+  .log-list{max-height:230px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .log-empty{font-size:12px;color:var(--sub);text-align:center;padding:16px 0 14px}
+  .log-item{display:flex;align-items:flex-start;gap:10px;padding:9px 2px;border-top:1px solid rgba(11,122,75,.08)}
+  .log-item:first-child{border-top:0}
+  .log-dot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--ok)}
+  .log-item.err .log-dot{background:var(--err)}
+  .log-main{min-width:0;flex:1}
+  .log-line1{font-size:12.5px;font-weight:650}
+  .log-item.ok .log-line1{color:var(--ok)}
+  .log-item.err .log-line1{color:var(--err)}
+  .log-time{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;margin-top:2px}
+  .log-meta{font-size:11px;color:var(--sub);margin-top:3px;line-height:1.5;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">智慧光明 · 门禁</div>
+  <h1>一键开门</h1>
+  <div class="sub">点击按钮即可开门，无需登录或输入任何信息</div>
+
+  <div class="ring">
+    <div class="pulse"></div>
+    <button id="openBtn" type="button" aria-label="开门">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 21h16"/>
+        <path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17"/>
+        <path d="M14.5 12h.01"/>
+      </svg>
+      <span class="label">开门</span>
+    </button>
+  </div>
+
+  <div id="status" class="status"><span class="ico">✓</span><span id="statusText">准备就绪，点击上方按钮开门</span></div>
+  <div class="door" id="doorName"></div>
+
+  <section class="log">
+    <div class="log-head">
+      <span class="log-title">开门记录</span>
+      <span class="log-head-r">
+        <span class="log-stat" id="logStat">加载中…</span>
+        <a class="log-more" id="logMore" href="#" target="_blank" rel="noopener">查看全部 ›</a>
+      </span>
+    </div>
+    <div class="log-list" id="logList"><div class="log-empty">暂无记录</div></div>
+    <div class="log-note">仅显示最近 10 条 · 查看全部可查询与分页</div>
+  </section>
+
+  <div class="foot">
+    <a class="lnk" id="settingsLink" href="#">⚙ 设置</a>
+    <span class="sep">·</span><a class="lnk" id="recordsLink" href="#">开门记录</a><br>
+    门禁动作会真实执行，请确认后再点击
+  </div>
+</div>
+
+<script>
+// 账号、密码、门点、密钥全部写死在后台，页面零配置、零密钥。
+// 发布链接自带 sharecode 访问凭据，所有请求原样带上它。
+function api(path){
+  var s = location.search || '';
+  if(!s) return path;
+  return path + (path.indexOf('?') >= 0 ? '&' : '?') + s.slice(1);
+}
+function get(path){
+  return fetch(api(path)).then(function(r){ return r.ok ? r.json() : null; });
+}
+function el(tag, cls, txt){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(txt != null) e.textContent = txt;
+  return e;
+}
+
+var btn = document.getElementById('openBtn');
+var statusEl = document.getElementById('status');
+var statusText = document.getElementById('statusText');
+var doorName = document.getElementById('doorName');
+
+// 「查看全部」另开一个界面，访问凭据随之带上
+document.getElementById('logMore').href = 'records.html' + (location.search || '');
+
+function show(kind, ico, msg){
+  statusEl.className = 'status ' + (kind || '');
+  statusText.textContent = msg;
+  statusEl.querySelector('.ico').textContent = ico;
+}
+
+function renderLog(d){
+  document.getElementById('logStat').textContent =
+    '累计 ' + (d.totalEver || 0) + ' 次 · 成功 ' + (d.successEver || 0) + ' · 失败 ' + (d.failEver || 0);
+  var list = document.getElementById('logList');
+  list.innerHTML = '';
+  var items = d.items || [];
+  if(!items.length){ list.appendChild(el('div','log-empty','暂无开门记录')); return; }
+  items.forEach(function(it){
+    var row = el('div', 'log-item ' + (it.ok ? 'ok' : 'err'));
+    row.appendChild(el('span','log-dot'));
+    var main = el('div','log-main');
+    main.appendChild(el('div','log-line1', it.ok ? '开门成功' : '开门失败'));
+    main.appendChild(el('div','log-time', it.time || ''));
+    var meta = [];
+    if(it.doorName) meta.push(it.doorName);
+    if(it.message) meta.push(it.message);
+    if(it.relogged) meta.push('自动重登 ' + (it.reloginAttempts || 1) + ' 次');
+    if(it.elapsedMs != null) meta.push('耗时 ' + it.elapsedMs + 'ms');
+    if(meta.length) main.appendChild(el('div','log-meta', meta.join(' · ')));
+    row.appendChild(main);
+    list.appendChild(row);
+  });
+}
+
+function loadLog(){
+  get('/api/door/history?take=10')   // 主页面只显示最近 10 条
+    .then(function(d){ if(d) renderLog(d); })
+    .catch(function(){});
+}
+
+// 辅助入口（访问凭据随链接带上）
+document.getElementById('settingsLink').href = 'settings.html' + (location.search || '');
+document.getElementById('recordsLink').href = 'records.html' + (location.search || '');
+
+// 静默读取后台门点名称与配置状态，失败不影响开门
+get('/api/status')
+  .then(function(d){
+    if(!d) return;
+    if(d.doorName) doorName.textContent = '当前门点：' + d.doorName;
+    if(d.ready === false){
+      show('wait', '⚙', '尚未配置账号密码，请先点下方「设置」填写');
+      doorName.textContent += (doorName.textContent ? '　' : '') + '（未配置账号）';
+    }
+  })
+  .catch(function(){});
+loadLog();
+
+btn.addEventListener('click', async function(){
+  if(btn.disabled) return;
+  btn.disabled = true;
+  show('wait', '◌', '正在开门，请稍候…');
+  try{
+    var resp = await fetch(api('/api/door/open'), {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: '{}'
+    });
+    var d = {};
+    try{ d = await resp.json(); }catch(e){}
+    if(resp.status === 200 && d.ok){
+      var extra = d.relogged
+        ? '\n登录已失效，后台已自动重新登录并重试' + (d.reloginAttempts || 1) + ' 次'
+        : '';
+      show('ok', '✓', '开门成功' + (d.message ? ' · ' + d.message : '') + extra);
+    }else{
+      var msg = d.message || ('HTTP ' + resp.status);
+      var auto = d.relogged ? '（已自动重新登录 ' + (d.reloginAttempts || 1) + ' 次仍失败）' : '';
+      show('err', '✕', '开门失败' + auto + '：' + msg + (d.hint ? '\n' + d.hint : ''));
+    }
+  }catch(e){
+    show('err', '✕', '网络异常：' + e.message);
+  }finally{
+    btn.disabled = false;
+    loadLog();   // 无论结果如何都刷新记录
+  }
+});
+</script>
+</body>
+</html>

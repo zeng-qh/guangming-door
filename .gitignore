@@ -1,0 +1,14 @@
+# 运行时产物
+bin/
+obj/
+publish/
+data/
+*.user
+
+# 含抓包 token / payload 的本地文件，不入库
+capture-bundle.json
+
+# 系统
+.DS_Store
+Thumbs.db
+appsettings.Local.json

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b7a4b">
+<title>设置 · 一键开门</title>
+<style>
+  :root{
+    --brand:#0b7a4b; --brand-d:#096039; --brand-l:#13a163;
+    --bg1:#eef6f1; --bg2:#dceee3;
+    --ok:#0b7a4b; --err:#c8352b; --wait:#8a6a1f; --warn:#b26a12;
+    --text:#15241d; --sub:#6d8176; --line:rgba(11,122,75,.12);
+    --card:rgba(255,255,255,.86);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{min-height:100%}
+  body{
+    margin:0;color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);
+    background-attachment:fixed;
+    padding:calc(18px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:520px;margin:0 auto}
+  .back{display:inline-block;font-size:12.5px;color:var(--brand);text-decoration:none;font-weight:650;margin-bottom:10px}
+  .back:active{opacity:.6}
+  h1{font-size:22px;margin:0 0 4px;font-weight:700;letter-spacing:1px}
+  .lead{font-size:12.5px;color:var(--sub);line-height:1.7;margin:0 0 18px}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 4px 18px rgba(16,50,38,.05);padding:18px;margin-bottom:14px;
+  }
+  .card h2{font-size:14px;margin:0 0 4px;color:var(--brand);font-weight:700}
+  .card .cap{font-size:11.5px;color:var(--sub);margin:0 0 16px;line-height:1.6}
+
+  label{display:block;font-size:12px;color:var(--sub);font-weight:650;margin:14px 0 6px}
+  label:first-of-type{margin-top:0}
+  input{
+    width:100%;padding:11px 12px;font-size:15px;color:var(--text);
+    border:1px solid var(--line);border-radius:10px;background:#fff;outline:none;min-height:42px;
+  }
+  input:focus{border-color:var(--brand-l);box-shadow:0 0 0 2px rgba(19,161,99,.12)}
+  input::placeholder{color:#a8b8af}
+  input,button{font:inherit}
+  .hint{font-size:11px;color:var(--sub);margin-top:5px;line-height:1.6}
+
+  details.adv{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+  details.adv summary{font-size:12.5px;font-weight:650;color:var(--brand);cursor:pointer;list-style:none;outline:none}
+  details.adv summary::-webkit-details-marker{display:none}
+  details.adv summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
+  details.adv[open] summary::before{transform:rotate(90deg)}
+  .auto-id{font-size:11px;color:var(--sub);background:rgba(11,122,75,.05);
+    border-radius:8px;padding:8px 10px;margin-top:10px;word-break:break-all;line-height:1.6}
+  .auto-id code{color:var(--brand);font-weight:650}
+
+  .btns{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+  button{
+    padding:11px 16px;font-size:13.5px;font-weight:650;border-radius:10px;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--text);min-height:42px;
+  }
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.5;cursor:default;transform:none}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.danger{color:var(--warn);border-color:rgba(178,106,18,.35)}
+  .grow{flex:1 1 auto}
+
+  .state{font-size:12px;color:var(--sub);line-height:1.8;margin:0 0 4px}
+  .state b{color:var(--brand);font-weight:700}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+  .badge.ok{background:#e8f6ee;color:var(--ok)}
+  .badge.err{background:#fcedeb;color:var(--err)}
+
+  .result{margin-top:16px;display:none}
+  .result.show{display:block}
+  .step{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-top:1px solid rgba(11,122,75,.08);font-size:12.5px}
+  .step:first-child{border-top:0}
+  .step .dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:5px;background:var(--ok)}
+  .step.fail .dot{background:var(--err)}
+  .step .nm{font-weight:700;white-space:nowrap;min-width:64px}
+  .step.fail .nm{color:var(--err)}
+  .step .dt{color:var(--sub);word-break:break-all;line-height:1.55}
+  .advice{margin-top:12px;padding:11px 12px;border-radius:10px;font-size:12px;line-height:1.7;
+    background:#fbf5e6;color:var(--wait);border:1px solid #f0e0b6;white-space:pre-wrap}
+  .advice.ok{background:#e8f6ee;color:var(--ok);border-color:#bfe4cf}
+  .advice.err{background:#fcedeb;color:var(--err);border-color:#f3ccc8}
+
+  .foot{margin-top:6px;font-size:11px;color:var(--sub);line-height:1.9;text-align:center}
+  .spin{display:inline-block;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" id="back" href="#">← 返回开门</a>
+  <h1>设置</h1>
+  <p class="lead">只需填写智慧光明的<b>账号和密码</b>。登录后会自动识别用户 ID 与门点，
+    无需抓包、无需填写门参数。改完记得点「保存并测试」。</p>
+
+  <div class="card">
+    <h2>当前状态</h2>
+    <div class="state" id="state">加载中…</div>
+  </div>
+
+  <form class="card" id="form">
+    <h2>账号凭据</h2>
+    <p class="cap">仅保存在服务后台，不会出现在页面或链接里。</p>
+
+    <label for="mobile">账号（手机号）</label>
+    <input type="tel" id="mobile" autocomplete="username" placeholder="请输入手机号" inputmode="numeric">
+    <div class="hint">留空表示沿用已保存的账号</div>
+
+    <label for="password">密码</label>
+    <input type="password" id="password" autocomplete="current-password" placeholder="请输入密码">
+    <div class="hint" id="pwHint">留空表示不修改已保存的密码</div>
+
+    <details class="adv" id="adv">
+      <summary>高级：设备 ID（一般不用填）</summary>
+      <p class="cap" style="margin:12px 0 0">系统按账号自动生成一个稳定的设备 ID。若测试提示
+        「设备 ID 未被账号接受」，再填入该账号在智慧光明 App 里绑定的设备 ID
+        （抓包请求头 Doordu-System 的 device_guid）。</p>
+      <label for="deviceGuid">绑定设备 ID（留空 = 自动生成）</label>
+      <input type="text" id="deviceGuid" autocomplete="off" placeholder="留空则使用自动生成值">
+      <div class="auto-id" id="autoId">自动生成的设备 ID：加载中…</div>
+      <div class="hint">填了值就以它为准；输入框留空表示不改动当前设置。</div>
+      <button type="button" id="resetGuidBtn" style="margin-top:10px;padding:7px 12px;font-size:11.5px;min-height:32px">恢复自动生成</button>
+    </details>
+
+    <div class="btns">
+      <button type="submit" class="primary grow" id="saveBtn">保存并测试</button>
+      <button type="button" id="testOpenBtn" class="danger">测试开门</button>
+    </div>
+
+    <div class="result" id="result">
+      <div id="steps"></div>
+      <div class="advice" id="advice"></div>
+    </div>
+  </form>
+
+  <div class="foot">
+    「保存并测试」只验证登录与门列表，<b>不会开门</b><br>
+    「测试开门」会真实打开一次门，点击后需二次确认<br>
+    账号密码保存在服务后台 data/settings.json，重启不丢
+  </div>
+</div>
+
+<script>
+function api(path){
+  var s = location.search || '';
+  if(!s) return path;
+  return path + (path.indexOf('?') >= 0 ? '&' : '?') + s.slice(1);
+}
+function $(id){ return document.getElementById(id); }
+function post(path, body){
+  return fetch(api(path), {
+    method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(body || {})
+  }).then(function(r){ return r.json().then(function(d){ return {status:r.status, d:d}; }); });
+}
+function esc(s){ var e=document.createElement('span'); e.textContent=s==null?'':String(s); return e.innerHTML; }
+
+$('back').href = 'index.html' + (location.search || '');
+
+function renderState(d){
+  var h = '配置状态：' + (d.configured
+    ? '<span class="badge ok">已配置</span>'
+    : '<span class="badge err">未配置</span>');
+  h += '<br>账号：<b>' + esc(d.mobile || '—') + '</b>　密码：' + (d.passwordSet ? '已保存' : '未设置');
+  h += '<br>设备 ID：<b>' + esc(d.deviceGuid || '—') + '</b>（' +
+       (d.deviceGuidSource === 'manual' ? '手动补填' : '自动生成') + '）';
+  h += '<br>门点：' + (d.doorCount ? '<b>' + d.doorCount + '</b> 个' : '尚未获取');
+  if(d.doors && d.doors.length)
+    h += '　' + esc(d.doors.map(function(x){ return x.name; }).join('、'));
+  if(d.updatedAt) h += '<br>更新时间：' + esc(d.updatedAt);
+  $('state').innerHTML = h;
+  $('autoId').innerHTML = '自动生成的设备 ID：<code>' + esc(d.autoDeviceGuid || '—') + '</code>' +
+    (d.hasManualDeviceGuid ? '<br>当前已手动覆盖' : '');
+  if(d.passwordSet) $('pwHint').textContent = '已保存密码；留空表示不修改';
+}
+
+function loadState(){
+  return fetch(api('/api/settings'))
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d) renderState(d); })
+    .catch(function(){});
+}
+
+function renderTest(d, tag){
+  var box = $('result'); box.className = 'result show';
+  var steps = $('steps'); steps.innerHTML = '';
+  (d.steps || []).forEach(function(s){
+    var row = document.createElement('div');
+    row.className = 'step' + (s.ok ? '' : ' fail');
+    row.innerHTML = '<span class="dot"></span><span class="nm">' + esc(s.name) +
+                    '</span><span class="dt">' + esc(s.detail) + '</span>';
+    steps.appendChild(row);
+  });
+  var a = $('advice');
+  var msg = d.hint || (d.ok
+    ? (tag === 'open' ? '全链路通过，门已真实打开一次。' : '配置正确，可以正常开门。')
+    : '测试未通过，请按上面的提示处理。');
+  a.className = 'advice' + (d.ok ? ' ok' : (!d.steps || !d.steps.length ? ' err' : ''));
+  a.textContent = msg;
+  // 设备 ID 不被接受时自动展开高级区，方便直接补填
+  if(d.needDeviceGuid) $('adv').open = true;
+  return d;
+}
+
+function busy(on, label){
+  ['saveBtn','testOpenBtn'].forEach(function(id){ $(id).disabled = on; });
+  if(on) $('saveBtn').innerHTML = '<span class="spin">◌</span> ' + label;
+  else $('saveBtn').textContent = '保存并测试';
+}
+
+var resetGuid = false;   // 「恢复自动生成」标志
+
+$('form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var mobile = $('mobile').value.trim();
+  var password = $('password').value;
+  var deviceGuid = $('deviceGuid').value.trim();
+  // 留空 = 不改动；填入 = 覆盖；点了「恢复自动生成」= 显式清空
+  var payload = {mobile:mobile, password:password};
+  if(resetGuid) payload.deviceGuid = '';
+  else if(deviceGuid) payload.deviceGuid = deviceGuid;
+  resetGuid = false;
+  busy(true, '正在保存并测试…');
+  $('advice').className = 'advice'; $('advice').textContent = '正在验证，请稍候…';
+  $('result').className = 'result show';
+
+  post('/api/settings', payload)
+    .then(function(r){
+      if(!r.d.ok) throw new Error(r.d.message || '保存失败');
+      renderState(r.d.settings);
+      $('password').value = '';           // 保存后清空密码框
+      $('deviceGuid').value = '';         // 清空高级框，避免下次误当成新值
+      $('mobile').value = '';             // 账号框回到「沿用」占位
+      return post('/api/test', {openDoor:false});
+    })
+    .then(function(r){ renderTest(r.d, 'conn'); return loadState(); })
+    .catch(function(err){
+      $('advice').className = 'advice err';
+      $('advice').textContent = '操作失败：' + err.message;
+    })
+    .then(function(){ busy(false); });
+});
+
+$('resetGuidBtn').addEventListener('click', function(){
+  if(!confirm('将清除手动填写的设备 ID，恢复为系统自动生成的值，确定吗？')) return;
+  resetGuid = true;
+  $('deviceGuid').value = '';
+  $('adv').open = false;
+  $('form').requestSubmit();
+});
+
+$('testOpenBtn').addEventListener('click', function(){
+  if(!confirm('这将真实打开一次门，确定继续吗？')) return;
+  busy(true, '正在测试开门…');
+  $('advice').className = 'advice'; $('advice').textContent = '正在执行开门测试，请稍候…';
+  $('result').className = 'result show';
+  post('/api/test', {openDoor:true})
+    .then(function(r){ renderTest(r.d, 'open'); return loadState(); })
+    .catch(function(err){
+      $('advice').className = 'advice err';
+      $('advice').textContent = '操作失败：' + err.message;
+    })
+    .then(function(){ busy(false); });
+});
+
+loadState();
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# 智慧光明开门网关 —— Docker Compose（飞牛 fnOS / 树莓派适用）
+#
+# 已预填 GHCR 镜像地址，直接 compose up -d 即可；
+# 本地构建则取消 build: . 注释并注释掉 image 行。
+# 飞牛 fnOS 可在 Docker 界面「项目」里粘贴本文件直接创建。
+
+services:
+  guangming-door:
+    image: ghcr.io/zeng-qh/openrooms:latest
+    # build: .                # 本地构建时改用这一行
+    container_name: guangming-door
+    restart: unless-stopped
+    ports:
+      - "8080:8080"          # 左边改成你想用的宿主机端口
+    environment:
+      - TZ=Asia/Shanghai
+    # 4GB 树莓派内存保护：上限 512MB（超限只会重启本容器，不影响系统）
+    mem_limit: 512m
+    memswap_limit: 512m      # 不允许占用 swap，避免拖慢整机
+    pids_limit: 100
+    volumes:
+      # 命名卷：自动继承镜像内 /app/data 的属主与权限，最省心
+      - gm-data:/app/data
+      # 若想直接映射到宿主机目录便于查看文件，改用下面这行并先执行：
+      #   mkdir -p ./data && sudo chown -R 1654:1654 ./data
+      # - ./data:/app/data
+
+volumes:
+  gm-data:
