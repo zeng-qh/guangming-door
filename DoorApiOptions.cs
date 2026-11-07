@@ -51,7 +51,7 @@ public sealed class DoorApiOptions
     /// token 缓存分钟数。缓存可减少对上游的登录次数、避免频繁顶掉手机 App 会话；
     /// 遇到 10426 会自动强制重新登录并重试一次。设为 0 表示每次开门都重新登录。
     /// </summary>
-    public int TokenCacheMinutes { get; set; } = 10;
+    public int TokenCacheMinutes { get; set; } = 30;
 
     /// <summary>无副作用验活接口（Login 模式下用明文 token 调用）。</summary>
     public string SessionCheckPath { get; set; } = "user/auth_status";
