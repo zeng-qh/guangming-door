@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 //   - 登录后自动拉取 user_id 与门列表（rooms），门点参数全自动
 //   - device_guid 按账号自动生成，服务器拒绝时可在设置页「高级」补填绑定设备 ID
 //   - 只暴露「页面 + 状态 + 开门 + 记录 + 设置 + 测试」，不暴露转发/同步等调试端点
-//   - 访问控制由发布链接自带的 sharecode 承担
+//   - 本应用自身不做鉴权，访问控制由部署层承担（内网隔离 / 反代加凭据 / 发布链接）
 var builder = WebApplication.CreateBuilder(args);
 
 // 本地私有配置（git 忽略，不入镜像）：真实账号/设备/门点放这里，仓库与镜像只留占位

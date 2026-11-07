@@ -564,7 +564,7 @@ public sealed class DoorGateway
         return body;
     }
 
-    /// <summary>执行开门。Login 模式会自动登录并在 10426 时重登重试一次。</summary>
+    /// <summary>执行开门。Login 模式会自动登录，登录失效时自动重登并重发，最多重试 2 次。</summary>
     public async Task<DoorResult> OpenAsync(string? doorId, CancellationToken ct,
         bool precheck = true)
     {

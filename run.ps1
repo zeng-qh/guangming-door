@@ -11,8 +11,9 @@ Push-Location $dir
 try {
     $cfg = Join-Path $dir 'appsettings.json'
     $raw = Get-Content $cfg -Raw
-    if ($raw -match 'CHANGE-ME-PLEASE') {
-        Write-Host '[!] 请先编辑 appsettings.json，把 DoorApi:ApiKey 改成自己的密钥' -ForegroundColor Yellow
+    if (-not (Test-Path (Join-Path $dir 'appsettings.Local.json')) -and
+        -not (Test-Path (Join-Path $dir 'data\settings.json'))) {
+        Write-Host '[i] 首次使用：启动后在设置页填写账号密码；或把真实配置放进 appsettings.Local.json（不入库）' -ForegroundColor Cyan
     }
     $cfgObj = $raw | ConvertFrom-Json
     $mode = $cfgObj.DoorApi.Mode
