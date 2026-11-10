@@ -46,11 +46,11 @@ workstation GC + DATAS 自适应堆（实测稳定态约 26MB）、512MB 内存�
 **方式 A：拉 GHCR 镜像（推荐）**
 
 ```bash
-docker pull ghcr.io/zeng-qh/openrooms:latest
+docker pull ghcr.io/zeng-qh/guangming-door:latest
 docker run -d --name guangming-door --restart unless-stopped \
   -p 8080:8080 -e TZ=Asia/Shanghai \
   -v guangming-data:/app/data \
-  ghcr.io/zeng-qh/openrooms:latest
+  ghcr.io/zeng-qh/guangming-door:latest
 ```
 
 **方式 B：docker compose（fnOS 的 Docker「项目」界面可直接粘贴 `docker-compose.yml`）**
@@ -128,7 +128,7 @@ docker run -d --name guangming-door --restart unless-stopped \
 ## GitHub Actions
 
 推送到 `main`/`master` 或打 `v*` 标签时，`.github/workflows/docker-publish.yml` 自动构建
-**双架构镜像**发布到 GHCR（`ghcr.io/zeng-qh/openrooms:latest` + 语义化版本 + sha 标签），
+**双架构镜像**发布到 GHCR（`ghcr.io/zeng-qh/guangming-door:latest` + 语义化版本 + sha 标签），
 并带 GHA 层缓存与并发取消（新推送自动取消旧构建）。构建用交叉编译 + 运行阶段零 `RUN`，
 无需 QEMU 模拟目标架构。
 

@@ -6,7 +6,7 @@
 
 services:
   guangming-door:
-    image: ghcr.io/zeng-qh/openrooms:latest
+    image: ghcr.io/zeng-qh/guangming-door:latest
     # build: .                # 本地构建时改用这一行
     container_name: guangming-door
     restart: unless-stopped
