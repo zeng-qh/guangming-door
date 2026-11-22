@@ -1,7 +1,16 @@
 # 智慧光明开门网关（C# WebAPI）
 
-手机/浏览器点一下 → C# WebAPI → 自主登录取 token → 明文调用上游 → 开门。
-**不需要抓包、不需要 Frida、不依赖手机 App 会话**；App 级协议常量内置通用。
+> **⚠️ 重要状态更新（2026-11-22）**：上游服务端近期收紧了通信加密——明文请求
+> （`application/json` + `X-Enc-Level:0`）的登录仍成功，但业务接口 `auth_status` / `rooms` /
+> `doors/open` 一律返回 `10426 登录过期`。因此当前默认切换到 **Replay 抓包密文模式**：
+> 直接重放 App 抓包的 `doors/open` 密文（`text/plain` + `X-Enc-Level:2`）开门，已实测有效。
+> 下方「自主登录明文」架构说明为历史方案，服务器恢复明文兼容后可切回 `Mode=Login`。
+
+手机/浏览器点一下 → C# WebAPI → 重放抓包密文 → 开门。
+**开门密文来自 App 抓包**；App 级协议常量内置通用。
+
+> Replay 模式的密文内嵌会话 token，会因 App 端重新登录（`gm_login` 轮换 token）而失效；
+> 一旦开门失败（上游返回 426），重新抓一份 `doors/open` 密文导入 `DoorApi:OpenDoorPayload` 即可。
 
 ```
 手机（浏览器 / 快捷指令 / HTTP App）
@@ -111,9 +120,11 @@ docker run -d --name guangming-door --restart unless-stopped \
 
 ## 协议结论（实测）
 
-1. **服务器按 `Content-Type` 决定如何解析请求体**：`application/json` + 明文 JSON 直接接受
-   （无需 AES 密钥）；`text/plain` + 密文走 AES（App 原始方式）。网关统一明文。
-2. **`X-Enc-Level` 只控制响应**：`0`=明文 JSON，`2`=AES 密文。网关统一发 `0`。
+1. **服务器按 `Content-Type` 决定如何解析请求体**：`application/json` + 明文 JSON；
+   `text/plain` + 密文走 AES（App 原始方式）。**2026-11-22 起明文业务接口被拒（10426），
+   仅密文可用**。
+2. **`X-Enc-Level` 控制响应加解密**：`0`=明文 JSON，`2`=AES 密文。
+   网关按请求体自动选择：明文请求发 `0`，密文重放发 `2`。
 3. **明文模式必填 `device_guid` + `token`**，字段名必须是 `token` 且放 body；
    放 header 或改名一律 `10400`。
 4. **`device_guid` 与账号绑定**，填错一律 `426 / 10426`。

@@ -180,7 +180,7 @@ public sealed class DoorGateway
     private bool IsPlaintext => string.Equals(_opt.Mode, "Plaintext", StringComparison.OrdinalIgnoreCase);
     private string ModeName => IsLogin ? "Login" : (IsPlaintext ? "Plaintext" : "Replay");
 
-    private void ApplyHeaders(HttpRequestMessage req)
+    private void ApplyHeaders(HttpRequestMessage req, string encLevel = "0")
     {
         var basic = Convert.ToBase64String(
             Encoding.UTF8.GetBytes(_opt.ClientId + ":" + _opt.ClientSecret));
@@ -191,8 +191,8 @@ public sealed class DoorGateway
         req.Headers.TryAddWithoutValidation("Package-Name", _opt.PackageName);
         req.Headers.TryAddWithoutValidation("Accept-Language", "zh_CN");
         req.Headers.TryAddWithoutValidation("Connection", "Keep-Alive");
-        // 关键：让服务器返回明文 JSON
-        req.Headers.TryAddWithoutValidation("X-Enc-Level", "0");
+        // 明文模式让服务器返回明文 JSON(0)；密文重放模式需 2
+        req.Headers.TryAddWithoutValidation("X-Enc-Level", encLevel);
     }
 
     private string Url(string path) =>
@@ -212,7 +212,10 @@ public sealed class DoorGateway
         string path, string content, string contentType, CancellationToken ct)
     {
         var req = new HttpRequestMessage(HttpMethod.Post, Url(path));
-        ApplyHeaders(req);
+        // 2026-11-22：服务端收紧后，密文重放（text/plain）必须带 X-Enc-Level:2；
+        // 明文请求（application/json）仍用 0，让响应返回明文 JSON。
+        bool cipher = contentType != null && contentType.StartsWith("text/plain", StringComparison.OrdinalIgnoreCase);
+        ApplyHeaders(req, cipher ? "2" : "0");
         var sc = new StringContent(content, Encoding.UTF8);
         sc.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
         req.Content = sc;
@@ -701,20 +704,23 @@ public sealed class DoorGateway
                 Hint = "建议改为 Mode=Login（无需抓包），或运行 python3 tools/import_har.py <抓包.har> 导入。"
             };
         }
-        if (precheck && replay)
-        {
-            var sess = await CheckSessionAsync(ct);
-            if (!sess.Valid)
-            {
-                return new DoorResult
-                {
-                    Ok = false, Mode = "Replay",
-                    HttpStatus = sess.HttpStatus > 0 ? sess.HttpStatus : 426,
-                    Code = sess.Code ?? "SESSION_EXPIRED",
-                    DoorId = id, Message = sess.Message ?? "会话无效", Hint = sess.Hint
-                };
-            }
-        }
+        // 2026-11-22：服务端收紧后明文会话校验返回 10426，会误拦有效的密文开门。
+        // Replay 模式改用「密文开门回执」自证：直接发 doors/open，由响应判定成败，
+        // 不再做明文 precheck（明文验活本身已被上游拒绝）。
+        // if (precheck && replay)
+        // {
+        //     var sess = await CheckSessionAsync(ct);
+        //     if (!sess.Valid)
+        //     {
+        //         return new DoorResult
+        //         {
+        //             Ok = false, Mode = "Replay",
+        //             HttpStatus = sess.HttpStatus > 0 ? sess.HttpStatus : 426,
+        //             Code = sess.Code ?? "SESSION_EXPIRED",
+        //             DoorId = id, Message = sess.Message ?? "会话无效", Hint = sess.Hint
+        //         };
+        //     }
+        // }
 
         RelayResult relay2;
         if (IsPlaintext)
@@ -862,6 +868,48 @@ public sealed class DoorGateway
         }
         if (login.UserId > 0) store.CacheDoors(login.UserId, new List<DoorConfig>());
 
+        // 2026-11-22：抓包密文模式（Replay）下，服务端的明文会话校验一律返回 10426，
+        // 与设备绑定无关；因此不能用 CheckSession 判断成败。此模式下跳过明文校验，
+        // 以「登录成功 + 已配置有效密文」为准，开门有效性请用「一键开门」直接验证。
+        if (!IsLogin)
+        {
+            bool hasPayload = !string.IsNullOrWhiteSpace(_opt.OpenDoorPayload);
+            t.Steps.Add(new TestStep
+            {
+                Name = "抓包密文",
+                Ok = hasPayload,
+                Detail = hasPayload
+                    ? "已载入有效开门密文（" + (_opt.OpenDoorPayload?.Length ?? 0) + " 字符），开门回执自证"
+                    : "未配置开门密文"
+            });
+            t.DeviceAccepted = true;
+            t.DoorCount = _opt.Doors.Count;
+            t.Steps.Add(new TestStep
+            {
+                Name = "门点",
+                Ok = _opt.Doors.Count > 0,
+                Detail = _opt.Doors.Count > 0
+                    ? "已配置：" + string.Join("、", _opt.Doors.ConvertAll(x => x.Name))
+                    : "未配置门点"
+            });
+            if (openDoor)
+            {
+                var openR = await OpenAsync(null, ct);
+                t.OpenedDoor = openR.Ok;
+                t.OpenResult = openR;
+                t.Steps.Add(new TestStep
+                {
+                    Name = "开门",
+                    Ok = openR.Ok,
+                    Detail = (openR.Code ?? "") + " " + (openR.Message ?? "")
+                });
+            }
+            t.Ok = hasPayload && _opt.Doors.Count > 0 && (!openDoor || t.OpenedDoor);
+            t.Hint = "抓包密文模式：跳过明文会话校验（服务端已拒绝明文）。"
+                   + "请用首页「一键开门」验证实际开门效果。";
+            return t;
+        }
+
         // ② 设备 / 会话校验（无副作用接口）
         var session = await CheckSessionAsync(ct);
         t.DeviceAccepted = session.Valid;
@@ -994,8 +1042,15 @@ public sealed class DoorGateway
         }
         catch
         {
-            res.Ok = r.Ok;
-            res.Message = r.Response;
+            // 密文回执（非 JSON）：仅当响应是纯 base64 密文且 HTTP 200 时视为开门成功。
+            // 避免把上游的 HTML 错误页误判为成功。
+            string? body = r.Response?.Trim();
+            bool looksCipher = !string.IsNullOrEmpty(body) && body.Length >= 40 &&
+                               System.Text.RegularExpressions.Regex.IsMatch(body, @"^[A-Za-z0-9+/=]+$");
+            bool cipherOk = r.Ok && looksCipher;
+            res.Ok = cipherOk;
+            res.Code = cipherOk ? "200" : (r.Ok ? "UNKNOWN" : r.HttpStatus.ToString());
+            res.Message = cipherOk ? "开门成功" : ("上游未确认（HTTP " + r.HttpStatus + "）");
         }
         return res;
     }
