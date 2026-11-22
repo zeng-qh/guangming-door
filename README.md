@@ -12,6 +12,11 @@
 > Replay 模式的密文内嵌会话 token，会因 App 端重新登录（`gm_login` 轮换 token）而失效；
 > 一旦开门失败（上游返回 426），重新抓一份 `doors/open` 密文导入 `DoorApi:OpenDoorPayload` 即可。
 
+> **🔒 开门频率限制**：所有真实开门（一键开门、测试按钮的「实际开门」）统一限流——
+> **滑动窗口 60 秒内最多 2 次**，超出返回 HTTP 429「操作太频繁」，前端显示 ⏳ 提示，防止误触/连点。
+> 计数保存在内存，进程重启自动清零。可在 `appsettings.json` 调整
+> `DoorApi:RateLimitWindowSeconds`（窗口秒数）与 `DoorApi:RateLimitMax`（窗口内次数）。
+
 ```
 手机（浏览器 / 快捷指令 / HTTP App）
    │  POST /api/door/open

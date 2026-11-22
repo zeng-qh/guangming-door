@@ -153,17 +153,19 @@ public sealed class DoorGateway
     private readonly HttpClient _http;
     private readonly ILogger<DoorGateway> _log;
     private readonly SettingsStore _store;
+    private readonly OpenRateLimiter _limiter;
     private readonly SemaphoreSlim _loginLock = new(1, 1);
 
     // Login 模式的 token 缓存
     private string? _cachedToken;
     private DateTime _tokenAt = DateTime.MinValue;
 
-    public DoorGateway(IOptions<DoorApiOptions> options, ILogger<DoorGateway> log, SettingsStore store)
+    public DoorGateway(IOptions<DoorApiOptions> options, ILogger<DoorGateway> log, SettingsStore store, OpenRateLimiter limiter)
     {
         _opt = options.Value;
         _log = log;
         _store = store;
+        _limiter = limiter;
 
         var handler = new HttpClientHandler
         {
@@ -571,6 +573,22 @@ public sealed class DoorGateway
     public async Task<DoorResult> OpenAsync(string? doorId, CancellationToken ct,
         bool precheck = true)
     {
+        // 开门频率限制：1 分钟窗口内最多 N 次（默认 2 次），防误触/连点。
+        // 放在所有开门路径的最前端，一键开门与测试按钮均受此约束。
+        if (!_limiter.TryAcquire(out var retryAfter, out var used))
+        {
+            _log.LogWarning("开门被频率限制拦截：窗口内已用 {Used} 次，需等待 {Retry}s", used, retryAfter);
+            return new DoorResult
+            {
+                Ok = false,
+                Code = "RATE_LIMITED",
+                HttpStatus = 429,
+                Message = "操作太频繁：" + _opt.RateLimitWindowSeconds + " 秒内最多开门 "
+                          + _opt.RateLimitMax + " 次，请 " + retryAfter + " 秒后再试",
+                Hint = "已阻止重复开门，稍等片刻即可再开"
+            };
+        }
+
         // 通用方案兜底：换账号后门列表被清空时，先自动拉取一次（无副作用）。
         // 这样用户只在设置页填了账号密码、没点测试，也能直接开门。
         if (IsLogin && _opt.Doors.Count == 0)

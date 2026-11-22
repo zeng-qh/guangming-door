@@ -21,6 +21,7 @@ builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, relo
 builder.Services.Configure<DoorApiOptions>(
     builder.Configuration.GetSection(DoorApiOptions.SectionName));
 builder.Services.AddSingleton<SettingsStore>();
+builder.Services.AddSingleton<OpenRateLimiter>();
 builder.Services.AddSingleton<OpenLogStore>();
 builder.Services.AddSingleton<DoorGateway>();
 
@@ -212,6 +213,7 @@ app.MapPost("/api/door/open", async (DoorGateway gw, OpenLogStore log, SettingsS
         message = r.Message,
         doorId = r.DoorId,
         sent = r.Sent,
+        code = r.Code,
         relogged = r.Relogged,
         reloginAttempts = r.ReloginAttempts,
         hint = r.Hint

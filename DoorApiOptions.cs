@@ -73,6 +73,14 @@ public sealed class DoorApiOptions
     /// <summary>15621 端口 OEM 接口根路径。仅记录，不主动调用。</summary>
     public string OemBaseUrl { get; set; } = "https://zhgm.yrcid.com:15621/oem/";
 
+    // ---------- 开门频率限制 ----------
+
+    /// <summary>滑动时间窗口长度（秒）。默认 60 秒。</summary>
+    public int RateLimitWindowSeconds { get; set; } = 60;
+
+    /// <summary>时间窗口内最多开门次数。默认 2 次。</summary>
+    public int RateLimitMax { get; set; } = 2;
+
     /// <summary>最近一次导入抓包的来源与时间（仅 Replay 模式有意义）。</summary>
     public string? CaptureSource { get; set; }
     public string? CaptureImportedAt { get; set; }

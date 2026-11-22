@@ -239,7 +239,11 @@ btn.addEventListener('click', async function(){
     }else{
       var msg = d.message || ('HTTP ' + resp.status);
       var auto = d.relogged ? '（已自动重新登录 ' + (d.reloginAttempts || 1) + ' 次仍失败）' : '';
-      show('err', '✕', '开门失败' + auto + '：' + msg + (d.hint ? '\n' + d.hint : ''));
+      if (d.code === 'RATE_LIMITED') {
+        show('wait', '⏳', msg + (d.hint ? '\n' + d.hint : ''));
+      } else {
+        show('err', '✕', '开门失败' + auto + '：' + msg + (d.hint ? '\n' + d.hint : ''));
+      }
     }
   }catch(e){
     show('err', '✕', '网络异常：' + e.message);
